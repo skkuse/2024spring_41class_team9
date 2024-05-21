@@ -2,17 +2,15 @@ const https = require('https')
 const express = require('express')
 const app = express();
 
-//TODO: firebase 연동 ,job producer에서 id발행 
-const web_router = require('./routes/Web');
-const cli_router = require('./routes/Web');
+//TODO:job producer에서 id발행 
+const user_router = require('./routes/User');
 
-//Web App
-app.use('/web',web_router);
 
-//CLI App
-app.use('/cli',cli_router);
 
-//Green Pattern Refactoring Server
+//Web App and CLI App (user)
+app.use('/user',user_router);
+
+
 
 //run
 app.listen(3000, ()=> {
