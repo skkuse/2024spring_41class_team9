@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+    "esbenp.prettier-vscode",
+    "golang.go",
+    "dbaeumer.vscode-eslint",
+    "ms-python.black-formatter"
+  ],
+  "unwantedRecommendations": []
+}
