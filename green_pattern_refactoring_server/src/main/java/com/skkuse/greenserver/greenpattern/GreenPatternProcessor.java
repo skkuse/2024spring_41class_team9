@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component;
 import java.util.Base64;
 import java.util.List;
 
-
 @Component
 @RequiredArgsConstructor
 public class GreenPatternProcessor {

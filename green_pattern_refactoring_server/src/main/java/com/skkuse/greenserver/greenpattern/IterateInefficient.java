@@ -8,13 +8,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Component
-public class IterateInefficient implements CodeAnalyzer{
+public class IterateInefficient implements CodeAnalyzer {
 
     @Override
     public String analyze(String buggyCode) {
         StringBuilder fixedCodeBuilder = new StringBuilder();
         boolean isDetected = false;
-        int classStartIndex = 0;
 
         try {
             // 코드 분할
@@ -26,12 +25,8 @@ public class IterateInefficient implements CodeAnalyzer{
             String arrayListVariableName = "";
             int lineSize = lines.size();
 
-            for(int i=0; i<lineSize; i++) {
+            for (int i = 0; i < lineSize; i++) {
                 String line = codes[i];
-                if(line.contains("public class Buggy")) {
-                    classStartIndex = i;
-                    continue;
-                }
 
                 Pattern pattern = Pattern.compile("\\bArrayList\\s*<[^>]*>\\s+([a-zA-Z0-9_]+)\\s*=");
 
@@ -39,7 +34,7 @@ public class IterateInefficient implements CodeAnalyzer{
                 if (matcher.find()) {
                     arrayListVariableName = matcher.group(1);
 
-                    for(int j=i; j<codes.length; j++) {
+                    for (int j = i; j < codes.length; j++) {
                         String line2 = codes[j];
                         Pattern sizeMethodPattern = Pattern.compile("\\b" + arrayListVariableName + "\\.size\\(\\)");
 
@@ -56,17 +51,14 @@ public class IterateInefficient implements CodeAnalyzer{
             }
 
             // 수정
-            if(isDetected) {
+            if (isDetected) {
                 int count = countLeadingSpaces(lines.get(buggyLine));
-                lines.set(classStartIndex, "public class Fixed {");
+                String indent = " ".repeat(count);
 
                 lines.set(buggyLine, lines.get(buggyLine).replace(arrayListVariableName + ".size()", arrayListVariableName + "Size"));
 
                 StringBuilder builder = new StringBuilder();
-                for(int i=0; i<count; i++) {
-                    builder.append(' ');
-                }
-                builder.append("int " + arrayListVariableName + "Size = " + arrayListVariableName + ".size();\n");
+                builder.append(indent).append("int ").append(arrayListVariableName).append("Size = ").append(arrayListVariableName).append(".size();\n");
                 lines.add(buggyLine, builder.toString());
             }
 
