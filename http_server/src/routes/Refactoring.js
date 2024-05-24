@@ -3,6 +3,6 @@ const router = express.Router();
 
 const refactoring = require("../controllers/CodeController");
 
-router.post("/refactoring_result", refactoring.get_refactoring_code);
+router.post("/refactoring_result", refactoring.send_to_refactoring);
 
 module.exports = router;
