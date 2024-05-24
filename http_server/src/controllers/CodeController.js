@@ -1,19 +1,39 @@
-Job = require("../models/Job");
-JobProducer = require("../models/JobProducer");
+request = require("request");
+Job = require("../models/Job.js");
+JobProducer = require("../models/JobProducer.js");
 
-exports.send_to_refactoring = (req, res, next) => {};
-//그냥 JobProducer를 Controller로 둘까
-//Job 클래스에 enqueue update_db, update_storage 메소드를 두고
-//Jobcontroller가 Job 생성하고 Job 클래스에 있는 메소드를 사용하는방식?
+exports.send_to_refactoring = (req, res, next) => {
+  //    endpoint: /green_pattern
+  //    data: javacode
+  //    method: POST
+  const code = req.code; //디코딩 해야 함.
+  const file = req.files[n].fileBinaryB64Encoded; //json 인터페이스 명확해지면 바꾸기
+  console.log(file);
 
-//이렇게 하면 모델끼리 서로 얽힌다.
+  //send to green server
+  request.post(
+    {
+      headers: { "content-type": "application/json" },
+      url: "",
+      body: file,
+      json: true,
+    },
+    (error, response, body) => {
+      if (error) {
+        return; //에러 코드 리턴
+      }
+
+      res.json(body); //user에게 리팩토링 결과 반환
+    }
+  );
+};
+
 exports.send_to_measure = (req, res, next) => {
   //const id =
   //const code = req. ..
 
   job = new Job(id, code);
-
-  JobProducer.enqueue(Job);
-  JobProducer.update_db(Job);
-  JobProducer.update_storage(Job);
+  JobProducer.enqueue(job);
+  JobProducer.update_db(job);
+  JobProducer.update_storage(job);
 };
