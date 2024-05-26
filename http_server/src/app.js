@@ -1,14 +1,17 @@
 const https = require("https");
 const path = require("path");
 const express = require("express");
+//const config = require("../util/config");
 
 const app = express();
 
 //TODO:job producer에서 id발행, firebase 연동
-const user_router = require("./routes/User");
+const userRouter = require("./routes/User");
+
+app.use(express.json());
 
 //Web App and CLI App (user)
-app.use("/user", user_router);
+app.use("/user", userRouter);
 
 //run
 app.listen(3000, () => {

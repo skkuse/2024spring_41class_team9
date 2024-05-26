@@ -3,8 +3,8 @@ const router = express.Router();
 
 const user = require("../controllers/CodeController");
 
-router.post("/refactoring_code", user.send_to_refactoring);
+router.post("/refactoring_code", user.sendToRefactoring);
 
-router.post("/measure_carbonEmission", user.send_to_measure);
+router.post("/measure_carbonEmission", user.sendToMeasure);
 
 module.exports = router;

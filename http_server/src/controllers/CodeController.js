@@ -3,20 +3,20 @@ Job = require("../models/Job.js");
 JobProducer = require("../models/JobProducer.js");
 
 //user에게 받은 java code 리팩토링 서버에 보내기
-exports.send_to_refactoring = (req, res, next) => {
+exports.sendToRefactoring = (req, res, next) => {
+  const files = req.body.files;
+  const numOfFiles = files.length;
+
+  res.send("ok");
+  //send to green server
   //    endpoint: /green_pattern
   //    data: javacode
   //    method: POST
-  const code = req.code;
-  const file = req.files[n].fileBinaryB64Encoded; //json 인터페이스 명확해지면 바꾸기
-  console.log(file);
-
-  //send to green server
   request.post(
     {
       headers: { "content-type": "application/json" },
-      url: "",
-      body: file,
+      url: "http:/???/green_pattern",
+      body: files,
       json: true,
     },
     (error, response, body) => {
@@ -29,13 +29,30 @@ exports.send_to_refactoring = (req, res, next) => {
   );
 };
 
-exports.send_to_measure = (req, res, next) => {
-  //const id =
-  //const code = req. ..
-  //코드 디코딩 해야됨
-  job = new Job(id, code);
+exports.sendToMeasure = async (req, res, next) => {
+  // id 발행해야 함
+  const id = 0;
+  const files = req.body.files;
+  const numOfFiles = files.length;
 
-  JobProducer.enqueue(job);
-  JobProducer.update_db(job);
-  JobProducer.update_storage(job);
+  console.log(decodedString);
+
+  res.json({ job_id: "hi 영석~" });
+
+  //각 파일마다 job 생성
+  for (let i = 0; i < numOfFiles; i++) {
+    let file = files[i].fileOriginB64Encoded;
+    let path = files[i].fileRelativePath;
+
+    //decode
+    let code = Buffer.from(file, "base64").toString("utf-8");
+
+    job = new Job(id, code, path);
+
+    /*
+    JobProducer.enqueue(job);
+    JobProducer.updateDB(job);
+    JobProducer.updateStorage(job);
+    */
+  }
 };
