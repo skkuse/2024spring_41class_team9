@@ -1,6 +1,9 @@
+const JobProducer = require("../models/JobProducer.js");
+const Job = require("../models/Job.js");
+
 request = require("request");
-Job = require("../models/Job.js");
-JobProducer = require("../models/JobProducer.js");
+
+
 
 //user에게 받은 java code 리팩토링 서버에 보내기
 exports.sendToRefactoring = (req, res, next) => {
@@ -31,11 +34,10 @@ exports.sendToRefactoring = (req, res, next) => {
 
 exports.sendToMeasure = async (req, res, next) => {
   // id 발행해야 함
-  const id = 0;
+  const id = 1;
   const files = req.body.files;
   const numOfFiles = files.length;
 
-  console.log(decodedString);
 
   res.json({ job_id: "hi 영석~" });
 
@@ -46,12 +48,12 @@ exports.sendToMeasure = async (req, res, next) => {
 
     //decode
     let code = Buffer.from(file, "base64").toString("utf-8");
-
-    job = new Job(id, code, path);
-
+    let job = new Job(id, code, path);
+   
+    JobProducer.updateDB(job);
+    
     /*
     JobProducer.enqueue(job);
-    JobProducer.updateDB(job);
     JobProducer.updateStorage(job);
     */
   }

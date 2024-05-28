@@ -1,14 +1,17 @@
-const firebase = require("../../util/db");
-const firestore = firebase.firestore();
+const db = require('../../util/config');
+
 
 class JobProducer {
   enqueue() {} //
 
-  updateDB(job) {
-    try {
-      const path = job.path;
-      return firestore.collection(); //firebase에 코드 path저장
-    } catch (error) {}
+  static updateDB(job) {
+    //db.collection('jobs').doc(docId).set(job);
+    db.ref('jobs').push({job_id:job.job_id ,path:job.path}, function(error){
+      if(error)
+        console.error(error)
+      else
+        console.log("success save !!");
+    });
   }
 
   updateStorage(job) {

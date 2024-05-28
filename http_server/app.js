@@ -6,7 +6,7 @@ const express = require("express");
 const app = express();
 
 //TODO:job producer에서 id발행, firebase 연동
-const userRouter = require("./routes/User");
+const userRouter = require("./src/routes/User");
 
 app.use(express.json());
 

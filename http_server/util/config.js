@@ -1,36 +1,16 @@
-const dotenv = require("dotenv");
-const assert = require("assert");
+const firebase = require('firebase');
 
-dotenv.config();
-
-const {
-  PORT,
-  HOST,
-  HOST_URL,
-  API_KEY,
-  AUTH_DOMAIN,
-  DATABASE_URL,
-  PROJECT_ID,
-  STORAGE_BUCKET,
-  MESSAGING_SENDER_ID,
-  APP_ID,
-} = process.env;
-
-//assert는 Node.js 테스트용 모듈로, 정상적으로 작동하는지 확인해 주는 역할.
-
-//assert(PORT, "PORT is required");
-//assert(HOST, "HOST is required");
-
-module.exports = {
-  port: PORT,
-  host: HOST,
-  url: HOST_URL,
-  firebaseConfig: {
-    apikey: API_KEY,
-    authDomain: AUTH_DOMAIN,
-    databaseURL: DATABASE_URL,
-    projectId: PROJECT_ID,
-    storageBucket: STORAGE_BUCKET,
-    appId: APP_ID,
-  },
+const firebaseConfig = {
+  apiKey: "AIzaSyDLNw0TqgL2FKUZVIkKtdNZzn2QxNAstww",
+  authDomain: "test1-c3289.firebaseapp.com",
+  projectId: "test1-c3289",
+  storageBucket: "test1-c3289.appspot.com",
+  messagingSenderId: "545444248558",
+  appId: "1:545444248558:web:a44ed4902688382b0d6cff",
+  measurementId: "G-VLBEM32M74"
 };
+
+firebase.initializeApp(firebaseConfig)
+let db = firebase.database();
+
+module.exports = db;
