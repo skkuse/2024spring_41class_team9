@@ -24,7 +24,7 @@ public class GreenPatternController {
         System.out.println("GreenPatternController.processGreenPattern");
         return greenPatternProcessor.getGreenPattern(buggy);
     }
-
+ 
 /*    @PostMapping
     public String processGreenPattern(HttpServletRequest request) throws IOException {
         // 요청 본문 내용을 읽어들임

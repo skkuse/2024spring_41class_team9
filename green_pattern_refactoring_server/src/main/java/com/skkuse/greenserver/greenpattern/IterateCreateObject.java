@@ -1,5 +1,6 @@
 package com.skkuse.greenserver.greenpattern;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -10,8 +11,9 @@ import java.util.regex.Pattern;
 @Component
 public class IterateCreateObject implements CodeAnalyzer {
     // 제공받은 코드의 로직 사용, 코드 개선과정에서 유저의 원 코드 유지하도록 약간의 코드 수정
+
     @Override
-    public AnalyzeResult analyze(String buggyCode) {
+    public AnalyzeResult analyze(String buggyCode, String indentation) {
         int objectCreationIndex = 0;
         int loopCreationIndex = 0;
         boolean isfixed = false;
