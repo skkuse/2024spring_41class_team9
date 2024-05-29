@@ -9,9 +9,9 @@ import java.util.regex.Pattern;
 
 @Component
 public class IterateNested implements CodeAnalyzer {
+    // 제공받은 코드의 로직 사용, 코드 개선과정에서 유저의 원 코드 유지하도록 약간의 코드 수정
     @Override
-    public String analyze(String buggyCode) {
-        boolean isDetected = false;
+    public AnalyzeResult analyze(String buggyCode) {
         int firstStartIfIndex = 0;
         int firstEndIfIndex = 0;
         int thirdStartIfIndex = 0;
@@ -19,6 +19,7 @@ public class IterateNested implements CodeAnalyzer {
         String firstCondition = "";
         String secondCondition = "";
         String thirdCondition = "";
+        boolean isfixed = false;
 
         StringBuilder fixedCodeBuilder = new StringBuilder();
 
@@ -58,6 +59,7 @@ public class IterateNested implements CodeAnalyzer {
 
                                 if (line3.contains("if(")) {
                                     nestedIfFound = true;
+                                    isfixed = true;
                                     thirdStartIfIndex = k;
                                     Matcher matcher3 = pattern.matcher(line3);
 
@@ -127,7 +129,7 @@ public class IterateNested implements CodeAnalyzer {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        return fixedCodeBuilder.toString();
+        String fixedCode = fixedCodeBuilder.toString();
+        return new AnalyzeResult(fixedCode, isfixed);
     }
 }

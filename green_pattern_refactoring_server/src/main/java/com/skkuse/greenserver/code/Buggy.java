@@ -1,16 +1,12 @@
 package com.skkuse.greenserver.code;
 
-import java.util.Base64;
+import java.util.List;
 
 public class Buggy {
-    private String code;
 
-    public void setCode(String code) {
-        this.code = code;
-    }
+    private List<FileData> files;
 
-    public String base64ToJavaCode() {
-        byte[] decodedBytes = Base64.getDecoder().decode(code);
-        return new String(decodedBytes);
+    public List<FileData> getFiles() {
+        return files;
     }
 }

@@ -9,10 +9,12 @@ import java.util.regex.Pattern;
 
 @Component
 public class IterateCreateObject implements CodeAnalyzer {
+    // 제공받은 코드의 로직 사용, 코드 개선과정에서 유저의 원 코드 유지하도록 약간의 코드 수정
     @Override
-    public String analyze(String buggyCode) {
+    public AnalyzeResult analyze(String buggyCode) {
         int objectCreationIndex = 0;
         int loopCreationIndex = 0;
+        boolean isfixed = false;
 
         StringBuilder fixedCodeBuilder = new StringBuilder();
 
@@ -50,6 +52,7 @@ public class IterateCreateObject implements CodeAnalyzer {
 
             // 수정
             if (objectCreationIndex != 0) {
+                isfixed = true;
                 String fixedContent = lines.get(objectCreationIndex);
                 int count = countLeadingSpaces(lines.get(objectCreationIndex));
                 String indent = " ".repeat(count);
@@ -70,8 +73,8 @@ public class IterateCreateObject implements CodeAnalyzer {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        return fixedCodeBuilder.toString();
+        String fixedCode = fixedCodeBuilder.toString();
+        return new AnalyzeResult(fixedCode, isfixed);
     }
 
     private static int countLeadingSpaces(String text) {

@@ -1,13 +1,16 @@
 package com.skkuse.greenserver.code;
 
+
+import lombok.Getter;
+
+import java.util.List;
+
+@Getter
 public class Fixed {
 
-    private String code;
+    private List<FileData> files;
 
-    public String getCode() {
-        return code;
-    }
-    public Fixed(String code) {
-        this.code = code;
+    public Fixed(List<FileData> files) {
+        this.files = files;
     }
 }

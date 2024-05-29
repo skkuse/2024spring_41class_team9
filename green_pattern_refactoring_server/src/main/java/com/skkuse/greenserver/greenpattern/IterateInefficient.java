@@ -9,9 +9,9 @@ import java.util.regex.Pattern;
 
 @Component
 public class IterateInefficient implements CodeAnalyzer {
-
+    // 제공받은 코드의 로직 사용, 코드 개선과정에서 유저의 원 코드 유지하도록 약간의 코드 수정
     @Override
-    public String analyze(String buggyCode) {
+    public AnalyzeResult analyze(String buggyCode) {
         StringBuilder fixedCodeBuilder = new StringBuilder();
         boolean isDetected = false;
 
@@ -69,7 +69,8 @@ public class IterateInefficient implements CodeAnalyzer {
         } catch (Exception e) {
             System.out.println(e);
         }
-        return fixedCodeBuilder.toString();
+        String fixedCode = fixedCodeBuilder.toString();
+        return new AnalyzeResult(fixedCode, isDetected);
     }
 
     private static int countLeadingSpaces(String text) {
