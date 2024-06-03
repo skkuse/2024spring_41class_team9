@@ -15,9 +15,7 @@ public class IndentationFormatter {
                 indentLevel--;
             }
 
-            for (int i = 0; i < indentLevel; i++) {
-                formattedCode.append(indentation);
-            }
+            formattedCode.append(String.valueOf(indentation).repeat(Math.max(0, indentLevel)));
 
             formattedCode.append(line).append("\n");
 

@@ -29,6 +29,7 @@ public class GreenPatternProcessor {
                 if (analyzeResult.getIsFixed()) {
                     buggyCode = analyzeResult.getFixedCode();
                     buggyCode = indentationFormatter.formatCode(buggyCode, indentation);
+                    buggyCode = removeTrailingNewline(buggyCode);
                 }
                 //buggyCode = analyzeResult.getFixedCode();
             }
@@ -36,9 +37,9 @@ public class GreenPatternProcessor {
             fixedFiles.add(fixedFile);
         }
         return new Fixed(fixedFiles);
-}
+    }
 
-private String javaCodeToBase64(String javaCode) {
+    private String javaCodeToBase64(String javaCode) {
 
         return Base64.getEncoder().encodeToString(javaCode.getBytes());
         // return Base64.getEncoder().encodeToString(javaCode.getBytes(StandardCharsets.UTF_8)); <- UTF8 인코딩 명시
@@ -70,5 +71,12 @@ private String javaCodeToBase64(String javaCode) {
             }
         }
         return defaultIndentation; // indentation 발견에 실패한 경우
+    }
+
+    public static String removeTrailingNewline(String code) {
+        if (code != null && code.endsWith("\n")) {
+            return code.substring(0, code.length() - 1);
+        }
+        return code;
     }
 }
