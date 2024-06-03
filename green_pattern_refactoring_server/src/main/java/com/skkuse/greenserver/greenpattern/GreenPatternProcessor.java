@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class GreenPatternProcessor {
     private final List<CodeAnalyzer> codeAnalyzers;
+    private final IndentationFormatter indentationFormatter;
 
     public Fixed getGreenPattern(Buggy buggy) {
         List<FileData> files = buggy.getFiles();
@@ -23,14 +24,17 @@ public class GreenPatternProcessor {
         for (FileData file : files) {
             String buggyCode = file.base64ToJavaCode();
             String indentation = detectIndentationStyle(buggyCode);
-        System.out.println("indentationStyle = " + indentation);
-        for (CodeAnalyzer codeAnalyzer : codeAnalyzers) {
-            AnalyzeResult analyzeResult = codeAnalyzer.analyze(buggyCode, indentation);
-            buggyCode = analyzeResult.getFixedCode();
+            for (CodeAnalyzer codeAnalyzer : codeAnalyzers) {
+                AnalyzeResult analyzeResult = codeAnalyzer.analyze(buggyCode, indentation);
+                if (analyzeResult.getIsFixed()) {
+                    buggyCode = analyzeResult.getFixedCode();
+                    buggyCode = indentationFormatter.formatCode(buggyCode, indentation);
+                }
+                //buggyCode = analyzeResult.getFixedCode();
+            }
+            FileData fixedFile = new FileData(file.getFileRelativePath(), javaCodeToBase64(buggyCode));
+            fixedFiles.add(fixedFile);
         }
-        FileData fixedFile = new FileData(file.getFileRelativePath(), javaCodeToBase64(buggyCode));
-        fixedFiles.add(fixedFile);
-    }
         return new Fixed(fixedFiles);
 }
 
@@ -48,7 +52,6 @@ private String javaCodeToBase64(String javaCode) {
         String whiteSpace = "^([\\t\\s]*)[^\\t\\s]+.*";
         Pattern whiteSpacePattern = Pattern.compile(whiteSpace);
 
-        String indentation = "";
         String defaultIndentation = "    ";
 
         boolean flag = false;

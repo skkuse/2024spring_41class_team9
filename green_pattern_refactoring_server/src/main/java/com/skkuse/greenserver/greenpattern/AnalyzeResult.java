@@ -13,7 +13,7 @@ public class AnalyzeResult {
         return fixedCode;
     }
 
-    public boolean getIsfixed() {
+    public boolean getIsFixed() {
         return isfixed;
     }
 }

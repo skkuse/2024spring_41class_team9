@@ -9,7 +9,6 @@ import java.util.regex.Pattern;
 
 @Component
 public class IterateNested implements CodeAnalyzer {
-    // 제공받은 코드의 로직 사용, 코드 개선과정에서 유저의 원 코드 유지하도록 약간의 코드 수정
     @Override
     public AnalyzeResult analyze(String buggyCode, String indentation) {
         int firstStartIfIndex = 0;
@@ -105,16 +104,20 @@ public class IterateNested implements CodeAnalyzer {
             if (nestedIfFound) {
                 String conditionBody = "";
                 for (int i = thirdStartIfIndex + 1; i < thirdEndIfIndex; i++) {
-                    conditionBody = conditionBody + (lines.get(i) + "\n");
+                    if (i == thirdEndIfIndex - 1) {
+                        conditionBody = conditionBody + lines.get(i);
+                    } else {
+                        conditionBody = conditionBody + lines.get(i) + "\n";
+                    }
                 }
 
                 for (int i = firstStartIfIndex; i <= firstEndIfIndex; i++) {
                     lines.set(i, "##MUSTDELETE##");
                 }
 
-                lines.set(firstStartIfIndex, "\t\tif((" + firstCondition + " && " + secondCondition + ") && " + thirdCondition + ") {\n");
-                lines.add(firstStartIfIndex + 1, "\t\t\t" + conditionBody + "\n");
-                lines.add(firstStartIfIndex + 2, "\t\t}\n");
+                lines.set(firstStartIfIndex, indentation + indentation + "if((" + firstCondition + " && " + secondCondition + ") && " + thirdCondition + ") {");
+                lines.add(firstStartIfIndex + 1, indentation + indentation + indentation + conditionBody);
+                lines.add(firstStartIfIndex + 2, indentation + indentation + "}");
 
                 lines.removeIf(item -> item.equals("##MUSTDELETE##"));
 

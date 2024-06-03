@@ -1,5 +1,6 @@
 package com.skkuse.greenserver.greenpattern;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -55,10 +56,12 @@ public class IterateInefficient implements CodeAnalyzer {
                 int count = countLeadingSpaces(lines.get(buggyLine));
                 String indent = " ".repeat(count);
 
-                lines.set(buggyLine, lines.get(buggyLine).replace(arrayListVariableName + ".size()", arrayListVariableName + "Size"));
+                lines.set(buggyLine, lines.get(buggyLine)
+                        .replace(arrayListVariableName + ".size()", arrayListVariableName + "Size"));
 
                 StringBuilder builder = new StringBuilder();
-                builder.append(indent).append("int ").append(arrayListVariableName).append("Size = ").append(arrayListVariableName).append(".size();\n");
+                builder.append(indent).append("int ").append(arrayListVariableName).append("Size = ")
+                        .append(arrayListVariableName).append(".size();\n");
                 lines.add(buggyLine, builder.toString());
             }
 
