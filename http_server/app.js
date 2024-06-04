@@ -1,7 +1,7 @@
 const https = require("https");
 const path = require("path");
 const express = require("express");
-//const config = require("../util/config");
+require("dotenv").config();
 
 const app = express();
 
