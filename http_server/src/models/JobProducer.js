@@ -5,6 +5,7 @@ const { PubSub } = require("@google-cloud/pubsub");
 class JobProducer {
   static async enqueue(job) {
     //create client
+    const job_id = job.job_id;
     const projectId = "swe-team9";
     const pubSubClient = new PubSub({
       projectId: projectId,
@@ -13,7 +14,7 @@ class JobProducer {
         private_key: process.env.GOOGLE_APPLICATION_CREDENTIALS,
       },
     });
-    const data = job.job_id;
+    const data = job_id;
     const dataBuffer = Buffer.from(data);
     const topicId = "compileTopic";
     const topicNameOrId = `projects/swe-team9/topics/${topicId}`;
@@ -26,6 +27,7 @@ class JobProducer {
     } catch (error) {
       console.log(`Received error while publishing: ${error.message}`);
     }
+    db.collection("jobs").doc(job_id).update({ status: "COMPILE_ENQUEUED" });
   }
 
   static async updateDB(job) {
