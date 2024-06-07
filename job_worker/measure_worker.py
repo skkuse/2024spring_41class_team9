@@ -32,7 +32,8 @@ if not firebase_admin._apps:
 storage_cred_path = 'swe-team9-feea36c92e8c.json'
 storage_client = storage.Client.from_service_account_json(storage_cred_path)
 
-
+# Get system values
+system_values = get_system_values()
 
 def fetch_job_metadata(job_id):
     #job_id로 firestore에서 데이터 읽어오기 (binary_path)
@@ -94,6 +95,8 @@ def run_measure_job(binary_path):
         else:
             print("Execution failed.")
 
+        os.remove(local_file_path + ".class")
+
         return runtime
     
     elif len(file_list) == 1 and file_list[0].endswith('.jar'):
@@ -115,6 +118,8 @@ def run_measure_job(binary_path):
             print("Execution successful.")
         else:
             print("Execution failed.")
+
+        os.remove(local_file_path)
         
         return runtime
 
@@ -122,7 +127,6 @@ def run_measure_job(binary_path):
         print(f"binary file error\n")
 
 def cal_carbon_emission(runtime):
-    system_values = get_system_values()
     return (runtime * (system_values['core_num'] * system_values['core_power'] + system_values['mem_num'] * system_values['mem_power']) * system_values['PUE'] * 0.001) * system_values['CI']
 
 def save_measure_result(carbon_emission, job_id):

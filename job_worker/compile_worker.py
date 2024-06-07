@@ -5,6 +5,7 @@ from concurrent.futures import TimeoutError
 import firebase_admin
 from firebase_admin import credentials, firestore, db
 import subprocess
+import shutil
 
 # Pub/Sub 설정
 pubsub_cred_path = 'swe-team9-ad44acd703b2.json'
@@ -30,7 +31,7 @@ storage_cred_path = 'swe-team9-feea36c92e8c.json'
 storage_client = storage.Client.from_service_account_json(storage_cred_path)
 
 
-def fetchJobMetadata(job_id):
+def fetch_job_metadata(job_id):
     #job_id로 firestore에서 데이터 읽어오기 (code_path, binary_path, status)
     firestore_client = firestore.client()
     # jobs 컬렉션에서 job_id 문서 참조
@@ -54,7 +55,7 @@ def fetchJobMetadata(job_id):
         print('No such document!')
         return None
 
-def runCompileJob(code_path, binary_path):
+def run_compile_job(code_path, binary_path):
     code_path = code_path+"/"
     print(code_path)
 
@@ -88,11 +89,13 @@ def runCompileJob(code_path, binary_path):
             print("Compilation failed.")
             print(result.stderr)
         
+        os.remove(local_file_path)
+        
         class_file_path = local_file_path.replace('.java', '.class')
         upload_path = binary_path + '/' + os.path.basename(class_file_path)
         print(class_file_path)
         print(upload_path)
-        saveCompileResult(class_file_path, upload_path)
+        save_compile_result(class_file_path, upload_path)
     else: # Java project
         print("project")
 
@@ -130,19 +133,24 @@ def runCompileJob(code_path, binary_path):
                 upload_path = binary_path + '/' + file_name
                 print(jar_file_path)
                 print(upload_path)
-                saveCompileResult(jar_file_path, upload_path)
+                save_compile_result(jar_file_path, upload_path)
 
     return None
 
-def saveCompileResult(binary_file_path, upload_path):
+def save_compile_result(binary_file_path, upload_path):
     # Save binary files to storage
     bucket = storage_client.get_bucket('earth-saver')
     blob = bucket.blob(upload_path)
     blob.upload_from_filename(binary_file_path)
     print(f"Uploaded {binary_file_path} to gs://earth-saver/{upload_path}")
+    os.remove(binary_file_path)
+
+    if os.path.exists('code'):
+        shutil.rmtree('code')
+        print("Deleted 'code' directory")
 
 
-def measureJobPublish(project_id, topic_id, job_id):
+def measure_job_publish(project_id, topic_id, job_id):
     publisher = pubsub_v1.PublisherClient()
     topic_path = publisher.topic_path(project_id, topic_id)
 
@@ -161,27 +169,27 @@ def measureJobPublish(project_id, topic_id, job_id):
         print(f"An error occurred: {e}")
 
 
-def subscribeAsync(message: pubsub_v1.subscriber.message.Message) -> None:
+def subscribe_async(message: pubsub_v1.subscriber.message.Message) -> None:
     # 1. message data에서 job_id알아내기
     job_id = message.data.decode('utf-8') 
     print(f"Job id: {job_id}")
 
-    # 2. fetchJobMetadata(job_id) + status update to "COMPILING"
-    job_metadata = fetchJobMetadata(job_id)
+    # 2. fetch_job_metadata(job_id) + status update to "COMPILING"
+    job_metadata = fetch_job_metadata(job_id)
     if job_metadata:
         code_path = job_metadata.get('code_path')
         binary_path = job_metadata.get('binary_path')
 
         # 3. Run compile job and save the result
-        runCompileJob(code_path, binary_path)
+        run_compile_job(code_path, binary_path)
 
         # 4. Measure job publish + status update to "MEASURE_ENQUEUED"
-        measureJobPublish("swe-team9", "measureTopic", job_id)
+        measure_job_publish("swe-team9", "measureTopic", job_id)
     
     print("ack")
     message.ack()
 
-streaming_pull_future = subscriber.subscribe(subscription_path, callback=subscribeAsync)
+streaming_pull_future = subscriber.subscribe(subscription_path, callback=subscribe_async)
 print(f"Listening for messages on {subscription_path}..\n")
 
 # Wrap subscriber in a 'with' block to automatically call close() when done.
