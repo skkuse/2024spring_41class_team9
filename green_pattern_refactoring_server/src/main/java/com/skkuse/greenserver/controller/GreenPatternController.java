@@ -21,7 +21,6 @@ public class GreenPatternController {
     //@ResponseBody
     @PostMapping
     public Fixed processGreenPattern(@RequestBody Buggy buggy) {
-        System.out.println("GreenPatternController.processGreenPattern");
         return greenPatternProcessor.getGreenPattern(buggy);
     }
  
