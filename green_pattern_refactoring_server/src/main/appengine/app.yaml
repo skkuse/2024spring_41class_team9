@@ -1,2 +1,2 @@
-service: green_pattern_sever
+service: green-pattern-server
 runtime: java17
