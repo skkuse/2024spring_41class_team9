@@ -4,7 +4,6 @@ plugins {
 	id 'org.springframework.boot' version '3.2.5'
 	id 'io.spring.dependency-management' version '1.1.4'
 	id 'com.google.cloud.tools.appengine' version '2.4.4'
-/*	id "org.gretty" version "4.1.4"*/
 }
 
 group = 'com.skkuse'
@@ -30,6 +29,7 @@ dependencies {
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+<<<<<<< HEAD
 	providedCompile 'com.google.appengine:appengine:+'
 }
 
@@ -38,6 +38,8 @@ appengine {
 		stopPreviousVersion = true  // default - stop the current version
 		promote = true              // default - & make this the current version
 	}
+=======
+>>>>>>> a878146eb6c0ae1af4a9b489e7b4aaed7265368c
 }
 
 tasks.named('test') {
