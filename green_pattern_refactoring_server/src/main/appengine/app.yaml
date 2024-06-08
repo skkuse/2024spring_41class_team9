@@ -1,0 +1,2 @@
+service: green_pattern_sever
+runtime: java17
