@@ -29,7 +29,6 @@ dependencies {
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-<<<<<<< HEAD
 	providedCompile 'com.google.appengine:appengine:+'
 }
 
@@ -38,8 +37,6 @@ appengine {
 		stopPreviousVersion = true  // default - stop the current version
 		promote = true              // default - & make this the current version
 	}
-=======
->>>>>>> a878146eb6c0ae1af4a9b489e7b4aaed7265368c
 }
 
 tasks.named('test') {
