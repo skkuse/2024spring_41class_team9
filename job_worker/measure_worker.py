@@ -1,11 +1,11 @@
 import os
+from google.api_core import retry
 from google.cloud import pubsub_v1
 from google.cloud import storage
-from concurrent.futures import TimeoutError
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import firebase_admin
 from firebase_admin import credentials, firestore, db
 import subprocess
-import psutil
 import time
 from system_values import get_system_values
 
@@ -15,7 +15,9 @@ os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = pubsub_cred_path
 project_id = "swe-team9" # 프로젝트 이름
 subscription_id = "measureTopic-sub" # 구독 이름
 subscriber = pubsub_v1.SubscriberClient()
-timeout = 15.0
+PULL_DEADLINE = 300
+TIMEOUT = 30.0
+NUM_MESSAGES = 1
 
 # `projects/{project_id}/subscriptions/{subscription_id}`
 subscription_path = subscriber.subscription_path(project_id, subscription_id)
@@ -139,15 +141,12 @@ def save_measure_result(carbon_emission, job_id):
     })
     None
 
-def subscribe_async(message: pubsub_v1.subscriber.message.Message) -> None:
-    print(f"Received message: {message.data}")
+def process_message(received_message):
     # 1. message data에서 job_id알아내기
-    job_id = message.data.decode('utf-8')
+    job_id = received_message.message.data.decode('utf-8')
     print(f"Job id: {job_id}")
-
     # 2. binary_path = fetch_job_metadata(job_id)
     binary_path = fetch_job_metadata(job_id)
-
     if binary_path:
         # 3. carbon_emission = run_measure_job(binary_path)
         runtime = run_measure_job(binary_path)
@@ -155,18 +154,39 @@ def subscribe_async(message: pubsub_v1.subscriber.message.Message) -> None:
 
         # 4. save_measure_result(carbon_emission)
         save_measure_result(carbon_emission, job_id)
+    return received_message.ack_id
 
-    message.ack()
+def synchronous_pull() -> None:
+    subscriber = pubsub_v1.SubscriberClient()
+    subscription_path = subscriber.subscription_path(project_id, subscription_id)
 
-streaming_pull_future = subscriber.subscribe(subscription_path, callback=subscribe_async)
-print(f"Listening for messages on {subscription_path}..\n")
+    with subscriber:
+        response = subscriber.pull(
+            request={"subscription": subscription_path, "max_messages": NUM_MESSAGES},
+            retry=retry.Retry(deadline=PULL_DEADLINE)
+        )
 
-# Wrap subscriber in a 'with' block to automatically call close() when done.
-with subscriber:
-    try:
-        # When `timeout` is not set, result() will block indefinitely,
-        # unless an exception is encountered first.
-        streaming_pull_future.result(timeout=timeout)
-    except TimeoutError:
-        streaming_pull_future.cancel()  # Trigger the shutdown.
-        streaming_pull_future.result()  # Block until the shutdown is complete.
+        if not response.received_messages:
+            print("No messages received.")
+            return
+
+        # Execute processing of messages in a thread pool
+        with ThreadPoolExecutor(max_workers=NUM_MESSAGES) as executor:
+            future = executor.submit(process_message, response.received_messages[0])
+            try:
+                # Wait for the message to be processed within the timeout period
+                future.result(timeout=TIMEOUT)
+            except TimeoutError:
+                print("Processing timed out. Message will not be acknowledged and will be re-delivered.")
+                return  # Exit the function without acknowledging the message
+
+        # Acknowledge all successfully processed messages
+        ack_id = response.received_messages[0].ack_id
+        subscriber.acknowledge(request={"subscription": subscription_path, "ack_ids": [ack_id]})
+        print(f"Acknowledged message")
+
+def main():
+    synchronous_pull()
+
+if __name__ == "__main__":
+    main()

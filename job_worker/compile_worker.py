@@ -1,7 +1,8 @@
 import os
+from google.api_core import retry
 from google.cloud import pubsub_v1
 from google.cloud import storage
-from concurrent.futures import TimeoutError
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import firebase_admin
 from firebase_admin import credentials, firestore, db
 import subprocess
@@ -12,11 +13,9 @@ pubsub_cred_path = 'swe-team9-ad44acd703b2.json'
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = pubsub_cred_path
 project_id = "swe-team9" # 프로젝트 이름
 subscription_id = "compileTopic-sub" # 구독 이름
-subscriber = pubsub_v1.SubscriberClient()
-timeout = 30.0
-
-# `projects/{project_id}/subscriptions/{subscription_id}`
-subscription_path = subscriber.subscription_path(project_id, subscription_id)
+PULL_DEADLINE = 300
+TIMEOUT = 30.0
+NUM_MESSAGES = 1
 
 # Firebase 설정
 firebase_cred_path = 'swe-team9-5611bf21bb70.json'
@@ -98,7 +97,6 @@ def run_compile_job(code_path, binary_path):
         save_compile_result(class_file_path, upload_path)
     else: # Java project
         print("project")
-
         # Download project to local storage
         for gcs_file_path in file_list:
             local_file_path = 'code/' + gcs_file_path[len(code_path):]
@@ -114,7 +112,7 @@ def run_compile_job(code_path, binary_path):
         with open(gradle_file, 'a') as file:
             file.write('\njar {\n')
             file.write('    manifest {\n')
-            file.write('        attributes("Main-Class": "demo.App")\n')
+            file.write('        attributes \'Main-Class\': application.mainClass\n')
             file.write('    }\n')
             file.write('    from {\n')
             file.write('        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }\n')
@@ -149,10 +147,9 @@ def save_compile_result(binary_file_path, upload_path):
         shutil.rmtree('code')
         print("Deleted 'code' directory")
 
-
-def measure_job_publish(project_id, topic_id, job_id):
+def measure_job_publish(job_id):
     publisher = pubsub_v1.PublisherClient()
-    topic_path = publisher.topic_path(project_id, topic_id)
+    topic_path = publisher.topic_path(project_id, "measureTopic")
 
     data = job_id.encode("utf-8")
     try:
@@ -168,36 +165,53 @@ def measure_job_publish(project_id, topic_id, job_id):
     except Exception as e:
         print(f"An error occurred: {e}")
 
-
-def subscribe_async(message: pubsub_v1.subscriber.message.Message) -> None:
-    # 1. message data에서 job_id알아내기
-    job_id = message.data.decode('utf-8') 
+def process_message(received_message):
+    job_id = received_message.message.data.decode('utf-8')
     print(f"Job id: {job_id}")
 
-    # 2. fetch_job_metadata(job_id) + status update to "COMPILING"
     job_metadata = fetch_job_metadata(job_id)
     if job_metadata:
         code_path = job_metadata.get('code_path')
         binary_path = job_metadata.get('binary_path')
 
-        # 3. Run compile job and save the result
+        # Run compile job and save the result
         run_compile_job(code_path, binary_path)
+    return job_id
 
-        # 4. Measure job publish + status update to "MEASURE_ENQUEUED"
-        measure_job_publish("swe-team9", "measureTopic", job_id)
-    
-    print("ack")
-    message.ack()
+def synchronous_pull() -> None:
+    subscriber = pubsub_v1.SubscriberClient()
+    subscription_path = subscriber.subscription_path(project_id, subscription_id)
 
-streaming_pull_future = subscriber.subscribe(subscription_path, callback=subscribe_async)
-print(f"Listening for messages on {subscription_path}..\n")
+    with subscriber:
+        response = subscriber.pull(
+            request={"subscription": subscription_path, "max_messages": NUM_MESSAGES},
+            retry=retry.Retry(deadline=PULL_DEADLINE)
+        )
 
-# Wrap subscriber in a 'with' block to automatically call close() when done.
-with subscriber:
-    try:
-        # When `timeout` is not set, result() will block indefinitely,
-        # unless an exception is encountered first.
-        streaming_pull_future.result(timeout=timeout)
-    except TimeoutError:
-        streaming_pull_future.cancel()  # Trigger the shutdown.
-        streaming_pull_future.result()  # Block until the shutdown is complete.
+        if not response.received_messages:
+            print("No messages received.")
+            return
+
+        # Execute processing of messages in a thread pool
+        with ThreadPoolExecutor(max_workers=NUM_MESSAGES) as executor:
+            future = executor.submit(process_message, response.received_messages[0])
+            try:
+                # Wait for the message to be processed within the timeout period
+                job_id = future.result(timeout=TIMEOUT)
+            except TimeoutError:
+                print("Processing timed out. Message will not be acknowledged and will be re-delivered.")
+                return  # Exit the function without acknowledging the message
+
+        if job_id:
+            # Measure job publish + status update to "MEASURE_ENQUEUED"
+            measure_job_publish(job_id)
+            # Acknowledge all successfully processed messages
+            ack_id = response.received_messages[0].ack_id
+            subscriber.acknowledge(request={"subscription": subscription_path, "ack_ids": [ack_id]})
+            print(f"Acknowledged message")
+
+def main():
+    synchronous_pull()
+
+if __name__ == "__main__":
+    main()
