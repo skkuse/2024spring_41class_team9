@@ -97,7 +97,7 @@ const JOB_STATUS_READABLE: Record<JobStatus, string> = {
 
 type Job = {
   status: JobStatus;
-  error?: Error;
+  error?: string;
   carbonEmission?: number;
 };
 
@@ -147,7 +147,7 @@ function MainPage() {
             job: {
               ...state.job!,
               status: "ERROR",
-              error,
+              error: error.message,
             },
           }));
         }
@@ -165,7 +165,7 @@ function MainPage() {
             job: {
               ...state.job!,
               status: "ERROR",
-              error: new Error("Timeout"),
+              error: "Timeout",
             },
           }));
         }
@@ -307,7 +307,7 @@ function MainPage() {
                       ...state,
                       job: {
                         status: "ERROR",
-                        error: new Error("HTTP Error from measure"),
+                        error: "HTTP Error from measure",
                       },
                       loading: false,
                     }));
@@ -337,7 +337,7 @@ function MainPage() {
                       ...state,
                       job: {
                         status: "ERROR",
-                        error: new Error("HTTP Error from refactoring"),
+                        error: "HTTP Error from refactoring",
                       },
                       loading: false,
                     }));
@@ -356,7 +356,7 @@ function MainPage() {
                       ...state,
                       job: {
                         status: "ERROR",
-                        error: new Error("No refactoring result"),
+                        error: "No refactoring result",
                       },
                       loading: false,
                     }));
@@ -416,7 +416,7 @@ function MainPage() {
                   </Alert>
                 ) : state.job?.status === "ERROR" ? (
                   <Alert sx={{ height: "fit-content" }} severity="error">
-                    {`에러 발생: ${state.job.error?.message}`}
+                    {`에러 발생: ${state.job.error}`}
                   </Alert>
                 ) : !state.job ? (
                   <Alert sx={{ height: "fit-content" }} severity="info">
