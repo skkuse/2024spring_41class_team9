@@ -37,7 +37,6 @@ exports.sendToMeasure = async (req, res, next) => {
   const numOfFiles = files.length;
 
   res.header("Access-Control-Allow-Origin", "*");
-  res.json({ message: "server got job" });
 
   //각 파일마다 job 생성
   for (let i = 0; i < numOfFiles; i++) {
@@ -57,4 +56,6 @@ exports.sendToMeasure = async (req, res, next) => {
     await JobProducer.updateStorage(job);
     await JobProducer.enqueue(job);
   }
+  res.json({ job_id: id });
+  return;
 };
