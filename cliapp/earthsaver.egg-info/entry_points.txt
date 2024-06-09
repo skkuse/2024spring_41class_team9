@@ -1,0 +1,2 @@
+[console_scripts]
+earthsaver = earthsaver.main:earthsaver
