@@ -14,6 +14,6 @@ app.use(express.json());
 app.use("/user", userRouter);
 
 //run
-app.listen(3000, () => {
+app.listen(8080, () => {
   console.log("running http server");
 });

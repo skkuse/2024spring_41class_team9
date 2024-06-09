@@ -31,12 +31,16 @@ class JobProducer {
   }
 
   static async updateDB(job) {
+    let job_id = job.job_id;
     let newDoc = db.collection("jobs").doc();
-    let job_id = newDoc.id;
+
+    
+    job_id = newDoc.id;
     job.job_id = job_id;
 
     let currentPathValues = `jobs/${job_id}/code`;
     let binaryPath = `jobs/${job_id}/binary`;
+
 
     await newDoc.set({
       codePath: currentPathValues,
@@ -44,6 +48,8 @@ class JobProducer {
       carbonEmission: 0,
       status: "--",
     });
+    
+  
     console.log(`${job_id} uploaded to firestore`);
     return;
   }

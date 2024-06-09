@@ -14,7 +14,7 @@ exports.sendToRefactoring = (req, res, next) => {
   request.post(
     {
       headers: { "content-type": "application/json" },
-      url: "http://localhost:8080/green-pattern",
+      url: "https://green-pattern-server-dot-swe-team9.du.r.appspot.com/green_pattern",
       body: files,
       json: true,
     },
@@ -31,7 +31,7 @@ exports.sendToRefactoring = (req, res, next) => {
 exports.sendToMeasure = async (req, res, next) => {
   // id 발행해야 함
 
-  const id = 0;
+  let id = 0;
   const files = req.body.files;
   const numOfFiles = files.length;
 
@@ -46,8 +46,14 @@ exports.sendToMeasure = async (req, res, next) => {
     let code = Buffer.from(file, "base64").toString("utf-8");
 
     let job = new Job(id, code, path);
+    
+    if(i==0){
+      await JobProducer.updateDB(job);
+      id= job.job_id;
+    }
 
-    await JobProducer.updateDB(job);
+    
+
     await JobProducer.updateStorage(job);
     await JobProducer.enqueue(job);
   }
