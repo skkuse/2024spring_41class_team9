@@ -23,6 +23,7 @@ exports.sendToRefactoring = (req, res, next) => {
         return; //에러 코드 리턴
       }
       //console.log(response.body); //응답 확인
+      res.header("Access-Control-Allow-Origin", "*");
       res.json(response.body); //user에게 리팩토링 결과 반환
     }
   );
@@ -35,6 +36,7 @@ exports.sendToMeasure = async (req, res, next) => {
   const files = req.body.files;
   const numOfFiles = files.length;
 
+  res.header("Access-Control-Allow-Origin", "*");
   res.json({ message: "server got job" });
 
   //각 파일마다 job 생성
@@ -46,13 +48,11 @@ exports.sendToMeasure = async (req, res, next) => {
     let code = Buffer.from(file, "base64").toString("utf-8");
 
     let job = new Job(id, code, path);
-    
-    if(i==0){
-      await JobProducer.updateDB(job);
-      id= job.job_id;
-    }
 
-    
+    if (i == 0) {
+      await JobProducer.updateDB(job);
+      id = job.job_id;
+    }
 
     await JobProducer.updateStorage(job);
     await JobProducer.enqueue(job);
