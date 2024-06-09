@@ -8,23 +8,74 @@ import {
   Typography,
   AppBar,
   Toolbar,
+  Backdrop,
 } from "@mui/material";
 import React, { useCallback, useEffect, useRef } from "react";
 import { firestore } from "../../lib/firebase";
 import { DocumentSnapshot, doc, onSnapshot } from "firebase/firestore";
 
-const defaultCode =
-  'public class Main {\n\tpublic static void main(String[] args) {\n\t\tSystem.out.println("Hello, World!");\n\t}\n}\n';
-const POLLING_TIMEOUT_MS = 30000;
-const HTTP_SERVER_ENDPOINT =
-  // "https://http-server-dot-swe-team9.du.r.appspot.com/user/measure_carbonEmission";
+const defaultCode = `// Write down your code here
+// Your class name must be Main
+
+public class Main {
+    public static void main(String[] args) {
+        boolean cond1 = checkCond1();
+        boolean cond2 = checkCond2();
+        boolean cond3 = checkCond3();
+
+        if(cond1) {
+            if(cond2) {
+                if(cond3) {
+                    System.out.println("Hello");
+                }
+            }
+        }
+    }
+
+    public static boolean checkCond1() {
+        int sum = 0;
+        for(int i=0; i<10000; i++) {
+            sum += i;
+        }
+        return sum > 50000;
+    }
+
+    public static boolean checkCond2() {
+        int sum = 0;
+        for(int i=0; i<10000; i++) {
+            sum *= i;
+        }
+        return sum > 50000;
+    }
+
+    public static boolean checkCond3() {
+        int sum = 0;
+        for(int i=0; i<10000; i++) {
+            sum *= i;
+        }
+        return sum > 50000;
+    }
+}
+
+  `;
+const POLLING_TIMEOUT_MS = 60000;
+
+const HTTP_SERVER_MEASURE_ENDPOINT =
+  "https://http-server-dot-swe-team9.du.r.appspot.com/user/measure_carbonEmission";
+// "http://localhost:8080/user/measure_carbonEmission";
+
+const HTTP_SERVER_REFACTORING_ENDPOINT =
   "https://http-server-dot-swe-team9.du.r.appspot.com/user/refactoring_code";
+// "http://localhost:8080/user/refactoring_code";
+
+const CARBON_EMISSION_BACKGROUND_COLOR = "#ffffff";
 
 type State = {
   currentCode: string;
   submittedOriginalCode?: string;
   greenPatternRefactoringCode?: string;
   job?: Job;
+  loading?: boolean;
 };
 
 type JobStatus =
@@ -45,7 +96,6 @@ const JOB_STATUS_READABLE: Record<JobStatus, string> = {
 };
 
 type Job = {
-  id: string;
   status: JobStatus;
   error?: Error;
   carbonEmission?: number;
@@ -144,12 +194,12 @@ function MainPage() {
 
   return (
     <Box>
-      <AppBar position="static">
+      <AppBar position="sticky">
         <Toolbar>
           <Typography variant="h5" sx={{ flexGrow: 1 }}>
             Earth Saver
           </Typography>
-          <Typography variant="h6" sx={{ mr: 1 }}>
+          <Typography variant="h6" sx={{ mr: 2 }}>
             SWE Team9
           </Typography>
           <img
@@ -169,6 +219,17 @@ function MainPage() {
           />
         </Toolbar>
       </AppBar>
+
+      {state.loading && (
+        <Backdrop
+          open={state.loading}
+          sx={{
+            zIndex: 1000,
+          }}
+        >
+          <CircularProgress />
+        </Backdrop>
+      )}
 
       <Box sx={{ padding: "24px" }}>
         <Box
@@ -218,38 +279,97 @@ function MainPage() {
                   let codeB64Encoded = btoa(state.currentCode);
                   console.log("codeB64Encoded: ", codeB64Encoded);
 
-                  const response = await fetch(HTTP_SERVER_ENDPOINT, {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      files: [
-                        {
-                          fileRelativePath: "Main.java",
-                          fileB64Encoded: codeB64Encoded,
-                        },
-                      ],
-                    }),
-                  });
-                  if (!response.ok) {
+                  setState((state) => ({
+                    ...state,
+                    loading: true,
+                  }));
+
+                  const measure_response = await fetch(
+                    HTTP_SERVER_MEASURE_ENDPOINT,
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        files: [
+                          {
+                            fileRelativePath: "Main.java",
+                            fileB64Encoded: codeB64Encoded,
+                          },
+                        ],
+                      }),
+                    }
+                  );
+                  if (!measure_response.ok) {
+                    console.error(measure_response.statusText);
                     setState((state) => ({
                       ...state,
                       job: {
-                        id: "",
                         status: "ERROR",
-                        error: new Error("HTTP Error"),
+                        error: new Error("HTTP Error from measure"),
                       },
+                      loading: false,
                     }));
                     return;
                   }
-                  const data = await response.json();
-                  console.log("response data: ", data);
-                  const job_id = "123";
+
+                  const refactoring_response = await fetch(
+                    HTTP_SERVER_REFACTORING_ENDPOINT,
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        files: [
+                          {
+                            fileRelativePath: "Main.java",
+                            fileB64Encoded: codeB64Encoded,
+                          },
+                        ],
+                      }),
+                    }
+                  );
+                  if (!refactoring_response.ok) {
+                    console.error(refactoring_response.statusText);
+                    setState((state) => ({
+                      ...state,
+                      job: {
+                        status: "ERROR",
+                        error: new Error("HTTP Error from refactoring"),
+                      },
+                      loading: false,
+                    }));
+                    return;
+                  }
+
+                  const { job_id } = await measure_response.json();
+                  console.log("response data from measure: ", job_id);
+
+                  const data = await refactoring_response.json();
+                  console.log("response data from refactoring: ", data);
+
+                  if (data.files.length === 0) {
+                    console.error("No refactoring result");
+                    setState((state) => ({
+                      ...state,
+                      job: {
+                        status: "ERROR",
+                        error: new Error("No refactoring result"),
+                      },
+                      loading: false,
+                    }));
+                    return;
+                  }
+
                   setState((state) => ({
                     ...state,
                     submittedOriginalCode: state.currentCode,
-                    greenPatternRefactoringCode: state.currentCode,
+                    greenPatternRefactoringCode: atob(
+                      data.files[0].fileB64Encoded
+                    ),
+                    loading: false,
                   }));
 
                   // start polling job status
@@ -358,78 +478,124 @@ type JobResultProps = {
 
 function JobResult({ job }: JobResultProps) {
   return (
-    <Box
-      sx={{
-        backgroundColor: "#f5f5f5",
-        border: "1px solid #e0e0e0",
-        borderRadius: "8px",
-        padding: "16px",
-      }}
-    >
-      <Stack
+    <Stack direction="column" spacing={1}>
+      <Box
         sx={{
-          width: "100%",
-          marginBottom: "24px",
+          backgroundColor: CARBON_EMISSION_BACKGROUND_COLOR,
+          border: "1px solid #e0e0e0",
+          borderRadius: "8px",
+          padding: "16px",
         }}
-        direction="row"
-        spacing={8}
-        alignItems="center"
       >
-        <Typography variant="h6" fontWeight="bold">
-          탄소배출량 (C kg)
-        </Typography>
-        <Typography variant="h6">
-          {job?.status === "DONE" ? job.carbonEmission : "-"}
-        </Typography>
-      </Stack>
-      <Stack
+        <Stack
+          sx={{
+            width: "100%",
+          }}
+          direction="row"
+          spacing={8}
+          alignItems="center"
+        >
+          <Typography variant="h6" fontWeight="bold">
+            탄소배출량 (C kg)
+          </Typography>
+          <Typography variant="h6">
+            {job?.status === "DONE" ? job.carbonEmission : "-"}
+          </Typography>
+        </Stack>
+      </Box>
+      <Box
         sx={{
-          width: "100%",
-          margin: "24px 0",
+          backgroundColor: CARBON_EMISSION_BACKGROUND_COLOR,
+          border: "1px solid #e0e0e0",
+          borderRadius: "8px",
+          padding: "16px",
         }}
-        direction="row"
-        spacing={8}
-        alignItems="center"
       >
-        <Typography variant="h6">
-          {job?.status === "DONE"
-            ? `자동차로 ${job.carbonEmission}km 이동한 것과 동일한 탄소배출량`
-            : ""}
-        </Typography>
-      </Stack>
-      <Stack
+        <Stack
+          sx={{
+            width: "100%",
+          }}
+          direction="row"
+          spacing={8}
+          alignItems="center"
+        >
+          <img
+            src="car.webp"
+            alt="car"
+            width="100"
+            height="100"
+            style={{ marginRight: "8px" }}
+          />
+          <Typography variant="h6">
+            {job?.status === "DONE"
+              ? `자동차로 ${job.carbonEmission}km 이동`
+              : ""}
+          </Typography>
+        </Stack>
+      </Box>
+      <Box
         sx={{
-          width: "100%",
-          margin: "24px 0",
+          backgroundColor: CARBON_EMISSION_BACKGROUND_COLOR,
+          border: "1px solid #e0e0e0",
+          borderRadius: "8px",
+          padding: "16px",
         }}
-        direction="row"
-        spacing={8}
-        alignItems="center"
       >
-        <Typography variant="h6">
-          {job?.status === "DONE"
-            ? `비행기로 ${job.carbonEmission}km 이동한 것과 동일한 탄소배출량`
-            : ""}
-        </Typography>
-      </Stack>
-      <Stack
+        <Stack
+          sx={{
+            width: "100%",
+          }}
+          direction="row"
+          spacing={8}
+          alignItems="center"
+        >
+          <img
+            src="airplane.webp"
+            alt="airplane"
+            width="100"
+            height="100"
+            style={{ marginRight: "8px" }}
+          />
+          <Typography variant="h6">
+            {job?.status === "DONE"
+              ? `비행기로 ${job.carbonEmission}km 이동`
+              : ""}
+          </Typography>
+        </Stack>
+      </Box>
+      <Box
         sx={{
-          width: "100%",
-          margin: "24px 0",
+          backgroundColor: CARBON_EMISSION_BACKGROUND_COLOR,
+          border: "1px solid #e0e0e0",
+          borderRadius: "8px",
+          padding: "16px",
         }}
-        direction="row"
-        spacing={8}
-        alignItems="center"
       >
-        <Typography variant="h6">
-          {job?.status === "DONE"
-            ? `나무 ${Math.round(
-                job.carbonEmission ?? 0
-              )}그루가 1년 동안 흡수하는 탄소량과 동일한 탄소배출량`
-            : ""}
-        </Typography>
-      </Stack>
-    </Box>
+        <Stack
+          sx={{
+            width: "100%",
+          }}
+          direction="row"
+          spacing={8}
+          alignItems="center"
+        >
+          <img
+            src="tree.webp"
+            alt="tree"
+            width="100"
+            height="100"
+            style={{ marginRight: "8px" }}
+          />
+          <Typography variant="h6">
+            {job?.status === "DONE"
+              ? `나무 ${Math.round(
+                  job.carbonEmission ?? 0
+                )}그루가 1년 동안 흡수`
+              : ""}
+          </Typography>
+        </Stack>
+      </Box>
+    </Stack>
   );
 }
 
