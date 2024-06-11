@@ -8,7 +8,9 @@ const app = express();
 //TODO:job producer에서 id발행, firebase 연동
 const userRouter = require("./src/routes/User");
 
-app.use(express.json());
+app.use(express.json({
+  limit: "32mb"
+}));
 
 //Web App and CLI App (user)
 app.use("/user", userRouter);
