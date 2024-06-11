@@ -9,10 +9,14 @@ import {
   AppBar,
   Toolbar,
   Backdrop,
+  IconButton,
+  Dialog,
+  DialogActions,
 } from "@mui/material";
 import React, { useCallback, useEffect, useRef } from "react";
 import { firestore } from "../../lib/firebase";
 import { DocumentSnapshot, doc, onSnapshot } from "firebase/firestore";
+import { Info } from "@mui/icons-material";
 
 const defaultCode = `// Write down your code here
 // Your class name must be Main
@@ -76,6 +80,7 @@ type State = {
   greenPatternRefactoringCode?: string;
   job?: Job;
   loading?: boolean;
+  showInfo?: boolean;
 };
 
 type JobStatus =
@@ -136,6 +141,7 @@ function MainPage() {
                 ...state.job!,
                 status: data.status,
                 carbonEmission: data.carbonEmission,
+                error: data.error,
               },
             }));
           }
@@ -219,6 +225,60 @@ function MainPage() {
           />
         </Toolbar>
       </AppBar>
+
+      {state.showInfo && (
+        <Dialog
+          open={state.showInfo}
+          onClose={() => {
+            setState((state) => ({
+              ...state,
+              showInfo: false,
+            }));
+          }}
+        >
+          <Box sx={{ padding: "24px" }}>
+            <Typography variant="h5" fontWeight="bold" marginBottom="8px">
+              서버 하드웨어 스펙
+            </Typography>
+            <Typography variant="subtitle1" marginBottom="16px">
+              모델: Intel Xeon E5-2696 v4 @ 2.20GHz
+              <br />
+              물리적 CPU 코어 수: 22개
+              <br />
+              논리적 CPU 코어 수: 1개
+              <br />
+              코어당 전력 소비율: 150W/22=6.82W
+              <br />
+              가용 메모리 크기: 0.6GB
+              <br />
+              메모리 사용량에 대한 전력 소비율: 0.3725W/GB
+              <br />
+              데이터 센터의 에너지 효율성(PUE): 1.67
+            </Typography>
+            <Typography variant="h5" fontWeight="bold">
+              탄소배출량 산출식
+            </Typography>
+            <img
+              src="carbon_formula.png"
+              alt="carbon_formula"
+              width="100%"
+              height="auto"
+            />
+          </Box>
+          <DialogActions>
+            <Button
+              onClick={() => {
+                setState((state) => ({
+                  ...state,
+                  showInfo: false,
+                }));
+              }}
+            >
+              닫기
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
 
       {state.loading && (
         <Backdrop
@@ -433,7 +493,7 @@ function MainPage() {
                 )}
               </Box>
             </Box>
-            <JobResult job={state.job} />
+            <JobResult job={state.job} setState={setState} />
           </Box>
         </Stack>
         <Box mt="24px">
@@ -474,9 +534,10 @@ function MainPage() {
 
 type JobResultProps = {
   job?: Job;
+  setState: React.Dispatch<React.SetStateAction<State>>;
 };
 
-function JobResult({ job }: JobResultProps) {
+function JobResult({ job, setState }: JobResultProps) {
   return (
     <Stack direction="column" spacing={1}>
       <Box
@@ -492,14 +553,35 @@ function JobResult({ job }: JobResultProps) {
             width: "100%",
           }}
           direction="row"
-          spacing={8}
           alignItems="center"
         >
           <Typography variant="h6" fontWeight="bold">
-            탄소배출량 (C kg)
+            탄소배출량 (C g)
           </Typography>
-          <Typography variant="h6">
-            {job?.status === "DONE" ? job.carbonEmission : "-"}
+          {/* {add small info button to show detail} */}
+          <IconButton
+            size="large"
+            color="primary"
+            onClick={() => {
+              setState((state) => ({
+                ...state,
+                showInfo: true,
+              }));
+            }}
+          >
+            <Info />
+          </IconButton>
+          <Typography
+            variant="h6"
+            sx={{
+              marginLeft: "24px",
+            }}
+          >
+            {job?.status === "DONE"
+              ? job.carbonEmission
+                ? formatNumber(job.carbonEmission)
+                : "N/A"
+              : "N/A"}
           </Typography>
         </Stack>
       </Box>
@@ -524,11 +606,15 @@ function JobResult({ job }: JobResultProps) {
             alt="car"
             width="100"
             height="100"
-            style={{ marginRight: "8px" }}
+            style={{ marginRight: "50px" }}
           />
           <Typography variant="h6">
             {job?.status === "DONE"
-              ? `자동차로 ${job.carbonEmission}km 이동`
+              ? `자동차로 ${
+                  job.carbonEmission
+                    ? formatNumber(carbonGramToCarDistance(job.carbonEmission))
+                    : "N/A"
+                } Km 이동 (연비 16Km/L)`
               : ""}
           </Typography>
         </Stack>
@@ -554,11 +640,17 @@ function JobResult({ job }: JobResultProps) {
             alt="airplane"
             width="100"
             height="100"
-            style={{ marginRight: "8px" }}
+            style={{ marginRight: "50px" }}
           />
           <Typography variant="h6">
             {job?.status === "DONE"
-              ? `비행기로 ${job.carbonEmission}km 이동`
+              ? `비행기로 ${
+                  job.carbonEmission
+                    ? formatNumber(
+                        carbonGramToAirplaneDistance(job.carbonEmission)
+                      )
+                    : "N/A"
+                } Km 이동`
               : ""}
           </Typography>
         </Stack>
@@ -584,19 +676,38 @@ function JobResult({ job }: JobResultProps) {
             alt="tree"
             width="100"
             height="100"
-            style={{ marginRight: "8px" }}
+            style={{ marginRight: "50px" }}
           />
           <Typography variant="h6">
             {job?.status === "DONE"
-              ? `나무 ${Math.round(
-                  job.carbonEmission ?? 0
-                )}그루가 1년 동안 흡수`
+              ? `나무 ${
+                  job.carbonEmission
+                    ? formatNumber(carbonGramToTreeCount(job.carbonEmission))
+                    : "N/A"
+                }그루가 1년 동안 흡수`
               : ""}
           </Typography>
         </Stack>
       </Box>
     </Stack>
   );
+}
+
+function carbonGramToCarDistance(carbonEmission: number): number {
+  return (carbonEmission / 1000) * (1000 / 166);
+}
+
+function carbonGramToAirplaneDistance(carbonEmission: number): number {
+  return (0.05 * carbonEmission) / 1000 / ((34 * 19.956) / 1000);
+}
+
+function carbonGramToTreeCount(carbonEmission: number): number {
+  return (carbonEmission / 1000 / 1000) * 7.16;
+}
+
+function formatNumber(number: number): string {
+  // to second digit
+  return number.toFixed(6);
 }
 
 export default MainPage;
