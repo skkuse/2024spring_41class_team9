@@ -4,6 +4,7 @@ import click
 import os
 import base64
 import requests
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from rich.console import Console
 from rich.panel import Panel
@@ -16,12 +17,12 @@ import time
 import keyboard 
 import difflib
 from pynput import mouse
-from typing import Literal,TypedDict
+from typing import Literal, TypedDict
 from enum import Enum
 import firebase_admin
 from firebase_admin import credentials, firestore
 import threading
-import json
+
 console = Console()
 
 # 로컬에서 모든 파일 불러와 list of dic 형태로 저장, 바이너리로 읽음
@@ -33,7 +34,7 @@ def readFiles():
             with open(file_path, 'rb') as f:
                 file_content = f.read()
             files_data.append({
-                "fileRelativePath": file_path,
+                "fileRelativePath": file_path[2:],
                 "filememory": file_content
             })
     return files_data
@@ -97,11 +98,12 @@ class Code:
                         "fileRelativePath": file["fileRelativePath"], #design doc 대로면 fileGreenB64가 맞는것 같은데 그냥 둬도 될거같아요
                         "fileB64Decoded": base64.b64decode(file["fileB64Encoded"]) # base64.b64decode(file["fileGreenB64Encoded"])
                     })
-        console.print("Decode success", style="bold green")
+#        console.print("Decode success", style="bold green")
 
     # 리펙토링 명령어에 반응해 수행하는 중추 프로세스
     @staticmethod
     def codeRefactoring(request_body):
+        console.print("Sending Project for Green Code...")
         response = submitCode(request_body, False)
         if response is None:
             console.print("Failed to refactor code.", style="bold red")
@@ -118,7 +120,7 @@ class Code:
     # 화면에 diff를 띄우는 함수
     @staticmethod
     def displayDiff(file_memory):
-        console.print("Getting Diff", style="bold blue")
+        #console.print("Getting Diff", style="bold blue")
         
         # 기존파일과 디코딩된 그린코드를 불러옴
         files_data = {file['fileRelativePath']: file['filememory'] for file in file_memory}
@@ -311,15 +313,22 @@ class Code:
             listener = mouse.Listener(
                 on_scroll=on_scroll)
             listener.start()
-            if files_data[file_paths[Code.current_index]] == decoded_data[file_paths[Code.current_index]]:
+            if len(file_paths) == 0:
+                console.print("No java code here", style = "bold red")
+                Code.loophandler = False
+            elif files_data[file_paths[Code.current_index]] == decoded_data[file_paths[Code.current_index]]:
                 nextfile()
-            if Code.loophandler == True:            
-                with Live(display(file_paths[Code.current_index]), refresh_per_second=60, console=console, screen=True) as live:                
+            if Code.loophandler == False :
+                console.print("Nothing changed")
+            if Code.loophandler == True:        
+                console.print("Getting Diff", style ="bold blue")   
+                time.sleep(1) 
+                with Live(display(file_paths[Code.current_index]), refresh_per_second=144, console=console, screen=True) as live:                
                     while True:
                         if Code.loophandler == False:
                             live.stop()
                             break
-                        time.sleep(1/60)
+                        time.sleep(1/144)
                         
                         if Code.current_index < len(file_paths):
                             live.update(display(file_paths[Code.current_index]))
@@ -334,80 +343,99 @@ class Code:
 
 # 미완성
 class Carbon:
-    class JobStatus(Enum):
-        COMPILE_ENQUEUED = "COMPILE_ENQUEUED"
-        COMPILING = "COMPILING"
-        MEASURE_ENQUEUED = "MEASURE_ENQUEUED"
-        MEASURING = "MEASURING"
-        DONE = "DONE"
-        ERROR = "ERROR"
-        IDLE = "IDLE"
-
     carbonEmission = -0.1
     job_id = ""
-    job_status = JobStatus["IDLE"]
+    job_status = "COMPILE_ENQUEUED"
     carbonCar = -0.1
     carbonPlane = -0.1
     carbonTree = -0.1
-
+    text = ""
+    run_monitor = True
     @staticmethod
     def setCarbonEmission(request_body):
+        console.print("Sending Project for Measuring...")
         job_id = submitCode(request_body, True)
         if job_id:
             Carbon.job_id = job_id
-            console.print(f"Start measuring with job_id: {job_id}", style="bold blue")
+            console.print(f"Wait for measuring amount of Carbon Emission!", style="bold blue")
             Carbon.dbPolling()
         else:
             console.print("Failed to start measuring.", style="bold red")
-
+# status에서 COMPILE_QUEUED가 안들어오고 skip되는 문제
     @staticmethod
     def dbPolling():
         def on_snapshot(doc_snapshot, changes, read_time):
-            for doc in doc_snapshot:
-                job_id = doc.id
-                status = doc.get('status')
-                Carbon.status = status
-                status_code, response_text = send_request(job_id, status)
-            callback_done.set()
+            try:
+                for doc in doc_snapshot:                 
+                    #data = doc.to_dict()  # 문서의 전체 데이터를 딕셔너리로 가져오기
+                    #print(f"Document data: {data}")  # 전체 데이터 출력   
+                    status = doc.get('status')
+                    if status != "ERROR" and status != "COMPILE_ENQUEUED":
+                        Carbon.text += " success!\n"
+                    if status == "ERROR":
+                        Carbon.text += "\n"
+                    if status != "COMPILE_ENQUEUED" and status != "DONE":
+                        Carbon.text += f"{status}"
 
-        def send_request(job_id):
-            url = 'https://swe-team9.web.app/status_request' 
-            headers = {'Content-Type': 'application/json'}
-            data = json.dumps({'job_id': job_id})
-            response = requests.post(url, headers=headers, data=data)
-            return response.status_code, response.text
-
-        cred = credentials.Certificate('./swe-team9-d7676333b6f8.json')
-        firebase_admin.initialize_app(cred)
+                    time.sleep(1/36)
+                    Carbon.job_status = status
+                    Carbon.carbonEmission = doc.get('carbonEmission')
+            except Exception as e:
+                print(f"An error occurred in on_snapshot: {e}")
+                
+        if getattr(sys, 'frozen', False):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.abspath(".")
+                
+        json_key_path = os.path.join(base_path, 'swe-team9-d7676333b6f8.json')
+        if not firebase_admin._apps:
+            cred = credentials.Certificate(json_key_path)
+            firebase_admin.initialize_app(cred)
         db = firestore.client()
-
-
 
         callback_done = threading.Event()
 
-        col_query = db.collection("jobs").where("job_id", "==", Carbon.job_id)
-
+        col_query = db.collection('jobs').document(Carbon.job_id)
         query_watch = col_query.on_snapshot(on_snapshot)
+        text_anime = [] 
+        text_anime.append(".")
+        text_anime.append("..")
+        text_anime.append("...")
+        text_anime.append("....")
+        text_anime.append(".....")
+        text_anime.append("......")
+        
+        Carbon.text += Carbon.job_status
+        
+        with Live(console=console, refresh_per_second=144) as live:
+            count = 0
+            while Carbon.job_status != "DONE" and Carbon.job_status != "ERROR":
+                
+                displaytext = Text(f"{Carbon.text}{text_anime[count//12]}")
+                live.update(displaytext)
+                count += 1
+                count = count % 72
+                time.sleep(1/144)
+#            console.print("------")
+            live.stop() 
 
-        callback_done.wait()
+#        query_watch.unsubscribe()
 
-    
-        while Carbon.job_status != Carbon.JobStatus["DONE"] or Carbon.JobStatus["ERROR"] :
-            time.sleep(250)
-            try:
-                print("...")
-            except Exception as e:
-               print(f"An error occurred: {e}")
-        return
+        if Carbon.job_status == "ERROR":
+            console.print("ERROR!!",style = "bold red")
+        if Carbon.job_status == "DONE":
+            console.print("Measure DONE!!",style = "bold green")
+
+
 
     @staticmethod
     def emissionConvert():
-        Carbon.carbonCar = 10 * Carbon.carbonEmission / (30.1 * 19.731 / 1000)
-        Carbon.carbonPlane = 0.05 * Carbon.carbonEmission / (34 * 19.956 / 1000)
-        Carbon.carbonTree = 6 * Carbon.carbonEmission * 44 / (12*1000)
-        console.print(f"\nYour project emits carbon {Carbon.carbonEmission:.6f} C kg, same amount as",style = "bold green")
-        console.print(f"Car: {Carbon.carbonCar:.6f} km, Plane: {Carbon.carbonPlane:.6f} km, Tree: {Carbon.carbonTree:.6f} 그루", style="bold green")
-        # TODO
+        Carbon.carbonCar = (Carbon.carbonEmission / 166.0)
+        Carbon.carbonPlane = 0.05 * (Carbon.carbonEmission / (34 * 19.956))
+        Carbon.carbonTree = 7.16 * Carbon.carbonEmission /1000000
+        console.print(f"\nYour project emits carbon {Carbon.carbonEmission:.6f} C g, same amount as",style = "bold green")
+        console.print(f"Car: {Carbon.carbonCar:.6f} km / Plane: {Carbon.carbonPlane:.6f} km / Tree: {Carbon.carbonTree:.6f} 그루\n", style="bold green")
 
 # 명령어 생성
 @click.command()
@@ -436,7 +464,8 @@ def earthsaver(measure, refactor):
         if refactor:
             Code.displayDiff(file_memory) # diff 출력
         if measure:
-            Carbon.emissionConvert() # Emission 출력
+            if Carbon.job_status != "ERROR":
+                Carbon.emissionConvert() # Emission 출력
 
 
 if __name__ == "__main__":
