@@ -4,7 +4,7 @@ from google.cloud import pubsub_v1
 from google.cloud import storage
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import firebase_admin
-from firebase_admin import credentials, firestore, db
+from firebase_admin import credentials, firestore
 import subprocess
 import shutil
 import time
@@ -78,7 +78,7 @@ def run_compile_job(code_path, binary_path):
             print("Compilation successful.")
         else:
             print("Compilation failed.")
-            print(result.stderr)
+            print(result.stderr.decode())
             return False, result.stderr
         
         class_file_path = local_file_path.replace('.java', '.class')
@@ -115,7 +115,16 @@ def run_compile_job(code_path, binary_path):
 
         # Use Gradle to build the project
         print("Building project with Gradle...")
-        result = subprocess.run(['gradle', 'jar'], cwd=os.path.join('code', 'app'))
+        try:
+            gradle_path = '/opt/gradle/gradle-8.8/bin/gradle'
+            gradle_cache_dir = os.path.join('tmp', 'code', '.gradle')
+            if os.path.exists(gradle_cache_dir):
+                shutil.rmtree(gradle_cache_dir)
+                print("Deleted gradle cache")
+            result = subprocess.run([gradle_path, 'jar'], cwd=os.path.join('tmp', 'code', 'app'))
+        except Exception as e:
+            print(str(e))
+            return False, str(e)
 
         if result.returncode == 0:
             print("Compilation successful.")
@@ -128,15 +137,17 @@ def run_compile_job(code_path, binary_path):
                     print(jar_file_path)
                     print(upload_path)
                     save_compile_result(jar_file_path, upload_path)
-            if os.path.exists('code'):
-                shutil.rmtree('code')
+            code_directory = os.path.join('tmp', 'code')
+            if os.path.exists(code_directory):
+                shutil.rmtree(code_directory)
                 print("Deleted 'code' directory")
         else:
-            if os.path.exists('code'):
-                shutil.rmtree('code')
+            code_directory = os.path.join('tmp', 'code')
+            if os.path.exists(code_directory):
+                shutil.rmtree(code_directory)
                 print("Deleted 'code' directory")
             print("Compilation failed.")
-            print(result.stderr)
+            print(result.stderr.decode())
             return False, result.stderr
 
     return True, None

@@ -67,7 +67,6 @@ def run_measure_job(binary_path):
         gcs_file_path = file_list[0]
         local_file_path = os.path.join(TEMP_DIR, os.path.basename(gcs_file_path))
 
-        # 확장자 제거
         local_file_path = os.path.splitext(local_file_path)[0]
 
         blob = bucket.blob(gcs_file_path)
@@ -98,7 +97,6 @@ def run_measure_job(binary_path):
         blob.download_to_filename(local_file_path)
         print(f"Downloaded {gcs_file_path} to {local_file_path}")
         
-        # Run the generated JAR file
         start_time = time.time()
         result = subprocess.run(['java', '-jar', local_file_path])
         end_time = time.time()
@@ -158,7 +156,6 @@ def synchronous_pull() -> None:
             job_id = response.received_messages[0].message.data.decode('utf-8')
             print(f"Job id: {job_id}")
             is_success, error_message = process_message(job_id)
-
             if is_success == False:
                 firestore_client = firestore.client()
                 doc_ref = firestore_client.collection('jobs').document(job_id)
