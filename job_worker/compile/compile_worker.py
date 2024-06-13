@@ -2,7 +2,6 @@ import os
 from google.api_core import retry
 from google.cloud import pubsub_v1
 from google.cloud import storage
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import firebase_admin
 from firebase_admin import credentials, firestore
 import subprocess
@@ -78,7 +77,7 @@ def run_compile_job(code_path, binary_path):
             print("Compilation successful.")
         else:
             print("Compilation failed.")
-            print(result.stderr.decode())
+            print(result.stderr)
             return False, result.stderr
         
         class_file_path = local_file_path.replace('.java', '.class')
@@ -90,7 +89,7 @@ def run_compile_job(code_path, binary_path):
         print("project")
         # Download project to local storage
         for gcs_file_path in file_list:
-            local_file_path = 'tmp/code/' + gcs_file_path[len(code_path):]
+            local_file_path = TEMP_DIR +'/code/' + gcs_file_path[len(code_path):]
             local_directory = os.path.dirname(local_file_path)
             if not os.path.exists(local_directory):
                 os.makedirs(local_directory)  # Ensure directory exists
@@ -99,7 +98,7 @@ def run_compile_job(code_path, binary_path):
             print(f"Downloaded {gcs_file_path} to {local_file_path}")
 
         # Modify build.gradle to make the JAR runnable
-        gradle_file = os.path.join('tmp','code','app', 'build.gradle')
+        gradle_file = os.path.join(TEMP_DIR,'code','app', 'build.gradle')
         try:
             with open(gradle_file, 'a') as file:
                 file.write('\njar {\n')
@@ -117,11 +116,11 @@ def run_compile_job(code_path, binary_path):
         print("Building project with Gradle...")
         try:
             gradle_path = '/opt/gradle/gradle-8.8/bin/gradle'
-            gradle_cache_dir = os.path.join('tmp', 'code', '.gradle')
+            gradle_cache_dir = os.path.join(TEMP_DIR, 'code', '.gradle')
             if os.path.exists(gradle_cache_dir):
                 shutil.rmtree(gradle_cache_dir)
                 print("Deleted gradle cache")
-            result = subprocess.run([gradle_path, 'jar'], cwd=os.path.join('tmp', 'code', 'app'))
+            result = subprocess.run([gradle_path, 'jar'], cwd=os.path.join(TEMP_DIR, 'code', 'app'))
         except Exception as e:
             print(str(e))
             return False, str(e)
@@ -129,25 +128,25 @@ def run_compile_job(code_path, binary_path):
         if result.returncode == 0:
             print("Compilation successful.")
             # Upload the jar file
-            source_folder = os.path.join('tmp', 'code','app', 'build', 'libs')
+            source_folder = os.path.join(TEMP_DIR, 'code','app', 'build', 'libs')
             for file_name in os.listdir(source_folder):
                 if file_name.endswith('.jar'):
-                    jar_file_path = 'tmp/code/app/build/libs/' + file_name
+                    jar_file_path = '/tmp/code/app/build/libs/' + file_name
                     upload_path = binary_path + '/' + file_name
                     print(jar_file_path)
                     print(upload_path)
                     save_compile_result(jar_file_path, upload_path)
-            code_directory = os.path.join('tmp', 'code')
+            code_directory = os.path.join(TEMP_DIR, 'code')
             if os.path.exists(code_directory):
                 shutil.rmtree(code_directory)
                 print("Deleted 'code' directory")
         else:
-            code_directory = os.path.join('tmp', 'code')
+            code_directory = os.path.join(TEMP_DIR, 'code')
             if os.path.exists(code_directory):
                 shutil.rmtree(code_directory)
                 print("Deleted 'code' directory")
             print("Compilation failed.")
-            print(result.stderr.decode())
+            print(result.stderr)
             return False, result.stderr
 
     return True, None
@@ -203,6 +202,7 @@ def synchronous_pull() -> None:
             
             job_id = response.received_messages[0].message.data.decode('utf-8')
             print(f"Job id: {job_id}")
+
             is_success, error_message = process_message(job_id)
             if is_success:
                 measure_job_publish(job_id)
