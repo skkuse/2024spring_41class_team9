@@ -54,7 +54,9 @@ exports.sendToMeasure = async (req, res, next) => {
     }
 
     await JobProducer.updateStorage(job);
-    await JobProducer.enqueue(job);
+    if (i == numOfFiles - 1) {
+      await JobProducer.enqueue(job);
+    }
   }
   res.json({ job_id: id });
   return;
