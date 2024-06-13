@@ -301,15 +301,15 @@ function MainPage() {
             justifyContent: "center",
             alignItems: "center",
             textAlign: "center",
-            backgroundColor: "#f0f0f0",
-            borderRadius: "8px",
           }}
         >
-          <Typography variant="h4">
-            Image로 서비스 소개하기.
-            <br />
-            JAVA CODE -- Measure / Green Pattern Refactoring
-          </Typography>
+          <img
+            src="cover.jpg"
+            alt="cover"
+            style={{
+              maxWidth: "100%",
+            }}
+          />
         </Box>
         <Stack direction="row" spacing={4}>
           <Box sx={{ width: "768px" }}>
