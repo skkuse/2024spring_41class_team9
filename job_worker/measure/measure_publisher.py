@@ -14,7 +14,7 @@ topic_path = publisher.topic_path(project_id, topic_id)
 
 #menrEHdD6f4kBiupQtzO
 #10
-data_str = f"TXMFLI2bNKaoWgbDCMGr"
+data_str = f"09exkuboij5u0SoR9Y5w"
 data = data_str.encode("utf-8")
 future = publisher.publish(topic_path, data)
 print(future.result())

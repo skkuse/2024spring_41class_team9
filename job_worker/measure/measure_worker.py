@@ -2,7 +2,6 @@ import os
 from google.api_core import retry
 from google.cloud import pubsub_v1
 from google.cloud import storage
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import firebase_admin
 from firebase_admin import credentials, firestore, db
 import subprocess
@@ -12,10 +11,9 @@ from system_values import get_system_values
 # Pub/Sub 설정
 pubsub_cred_path = 'pubsub-key.json'
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = pubsub_cred_path
-project_id = "swe-team9" # 프로젝트 이름
-subscription_id = "measureTopic-sub" # 구독 이름
+project_id = "swe-team9"
+subscription_id = "measureTopic-sub"
 PULL_DEADLINE = 300
-TIMEOUT = 30.0
 NUM_MESSAGES = 1
 TEMP_DIR = '/tmp'
 
@@ -71,19 +69,36 @@ def run_measure_job(binary_path):
 
         blob = bucket.blob(gcs_file_path)
         blob.download_to_filename(local_file_path + ".class")
-        print(f"Downloaded {gcs_file_path} to {local_file_path}.class")      
+        print(f"Downloaded {gcs_file_path} to {local_file_path}.class")
 
+        # 최대 30초 or 최대 10번
         start_time = time.time()
         result = subprocess.run(['java', '-cp', TEMP_DIR, os.path.relpath(local_file_path, TEMP_DIR)])
         end_time = time.time()
+
+        if result.returncode != 0:
+            print("Execution failed.")
+            return False, result.stderr
+        
+        runtime = end_time - start_time
+        max_runs = int(30/runtime) - 1
+
+        run_count = min(max_runs, 9)
+
+        for _ in range(run_count):
+            start_time = time.time()
+            subprocess.run(['java', '-cp', TEMP_DIR, os.path.relpath(local_file_path, TEMP_DIR)])
+            end_time = time.time()
+            runtime += end_time - start_time
+        
+        runtime_avg = runtime / (run_count+1)
 
         os.remove(local_file_path + ".class")
 
         if result.returncode == 0:
             print("Execution successful.")
-            runtime = end_time - start_time
-            print(f"runtime: {runtime} seconds")
-            carbon_emission = cal_carbon_emission(runtime)
+            print(f"runtime: {runtime_avg} seconds")
+            carbon_emission = cal_carbon_emission(runtime_avg)
             return True, carbon_emission
         else:
             print("Execution failed.")
@@ -96,18 +111,34 @@ def run_measure_job(binary_path):
         blob = bucket.blob(gcs_file_path)
         blob.download_to_filename(local_file_path)
         print(f"Downloaded {gcs_file_path} to {local_file_path}")
-        
+
         start_time = time.time()
         result = subprocess.run(['java', '-jar', local_file_path])
         end_time = time.time()
 
+        if result.returncode != 0:
+            print("Execution failed.")
+            return False, result.stderr
+
+        runtime = end_time - start_time
+        max_runs = int(30/runtime) - 1
+
+        run_count = min(max_runs, 9)
+
+        for _ in range(run_count):
+            start_time = time.time()
+            subprocess.run(['java', '-jar', local_file_path])
+            end_time = time.time()
+            runtime += end_time - start_time
+        
+        runtime_avg = runtime / (run_count+1)
+        
         os.remove(local_file_path)
 
         if result.returncode == 0:
             print("Execution successful.")
-            runtime = end_time - start_time
-            print(f"runtime: {runtime} seconds")
-            carbon_emission = cal_carbon_emission(runtime)
+            print(f"runtime: {runtime_avg} seconds")
+            carbon_emission = cal_carbon_emission(runtime_avg)
             return True, carbon_emission
         else:
             print("Execution failed.")
