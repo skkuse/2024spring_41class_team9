@@ -47,7 +47,7 @@ public class GreenPatternProcessor {
 
     public static String detectIndentationStyle(String code) {
         String[] lines = code.split("\n");
-        String classDefinition = "\\b(public|private|protected)?\\s*class\\s+\\w+";
+        String classDefinition = "\\b(public|private|protected)?\\s*class.*";
         Pattern classDefinitionPattern = Pattern.compile(classDefinition);
 
         String whiteSpace = "^([\\t\\s]*)[^\\t\\s]+.*";
@@ -65,7 +65,7 @@ public class GreenPatternProcessor {
             }
             else {
                 Matcher classDefinitionMatcher = classDefinitionPattern.matcher(line);
-                if(classDefinitionMatcher.find()) {
+                if(classDefinitionMatcher.matches()) {
                     flag = true;
                 }
             }
