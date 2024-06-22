@@ -16,7 +16,6 @@ from rich.style import Style
 import time
 import keyboard
 import difflib
-from pynput import mouse
 from typing import Literal, TypedDict
 from enum import Enum
 import firebase_admin
@@ -304,20 +303,9 @@ class Code:
                 if Code.scroll_offset < Code.max_scroll :
                     Code.scroll_offset += 1
 
-        def on_scroll(x, y, dx, dy):
-            if dy < 0:
-                if Code.scroll_offset < Code.max_scroll :
-                    Code.scroll_offset += 1
-            if dy > 0:
-                if Code.scroll_offset > 0:
-                    Code.scroll_offset -= 1
-
         # 실제로 화면을 띄우는 곳, rich Live를 통해 임시 화면을 띄우며 Live가 종료되면 기존 화면으로 돌아감
         try:
             keyboard.on_press(on_key_event)
-            listener = mouse.Listener(
-                on_scroll=on_scroll)
-            listener.start()
             if len(file_paths) == 0:
                 console.print("No java code here", style = "bold red")
                 Code.loophandler = False
@@ -339,7 +327,6 @@ class Code:
                             live.update(display(file_paths[Code.current_index]))
                         Code.layout_height = live.console.size.height
                         Code.layout_width = max(live.console.size.width/2 -5,1)
-            listener.stop()
 
         except KeyboardInterrupt:
             pass
