@@ -1,0 +1,13 @@
+runtime: custom
+env: flex
+service: measure-worker
+
+manual_scaling:
+  instances: 1
+
+env_variables:
+  GOOGLE_APPLICATION_CREDENTIALS: 'pubsub-key.json'
+  FIREBASE_DB_URL: 'https://swe-team9-default-rtdb.firebaseio.com'
+  STORAGE_BUCKET_NAME: 'earth-saver'
+
+entrypoint: python3 measure_worker.py

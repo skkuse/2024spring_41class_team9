@@ -1,0 +1,7 @@
+firebase-admin==6.5.0
+geocoder==1.38.1
+google-cloud-firestore==2.16.0
+google-cloud-pubsub==2.21.1
+google-cloud-storage==2.16.0
+numpy==1.26.4
+pandas==2.2.2
