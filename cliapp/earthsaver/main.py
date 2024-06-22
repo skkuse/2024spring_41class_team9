@@ -327,7 +327,6 @@ class Code:
                             live.update(display(file_paths[Code.current_index]))
                         Code.layout_height = live.console.size.height
                         Code.layout_width = max(live.console.size.width/2 -5,1)
-            listener.stop()
 
         except KeyboardInterrupt:
             pass
